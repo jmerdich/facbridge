@@ -2,6 +2,7 @@ import asyncio
 import re
 import time
 import os
+import logging
 from os.path import dirname
 
 from watchdog.observers import Observer
@@ -11,6 +12,9 @@ import discord
 from discord.ext import commands
 
 from mcrcon import MCRcon
+
+logger = logging.getLogger('discord')
+logger.setLevel(logging.DEBUG)
 
 class FacLogHandler(PatternMatchingEventHandler):
     def __init__(self, fbot, logfile):
@@ -48,19 +52,21 @@ class FacLogHandler(PatternMatchingEventHandler):
                 "CHAT": self.got_chat
                 }
 
-            method = dispatch.get(m.group(1), self.default_handler)
+            method = dispatch.get(m.group(1), None)
 
             if method is not None:
                 method(m.group(2))
+            else:
+                self.default_handler(m.group(1), m.group(2))
 
-    def default_handler(self, text):
-        print(text)
+    def default_handler(self, kind, text):
+        logger.debug("Factorio sent unknown '%s': '%s'", kind, text)
         channel = self.fbot.get_channel(self.fbot.bridge_id)
         coro = channel.send(text)
         asyncio.run_coroutine_threadsafe(coro, self.fbot.loop)
 
     def got_chat(self, text):
-        print("CHAT: " + text)
+        logger.debug("Factorio sent CHAT '%s'", text)
         user, msg = text.split(": ", 1)
         if user == "<server>":
             return
@@ -93,12 +99,16 @@ class FacBot(commands.Bot):
 
     async def send_to_factorio(self, ctx):
         msg = "{}: {}".format(ctx.author.display_name, ctx.message.content)
+        logger.debug("Msg from discord: \"{}\"".format(msg))
         with MCRcon(self.pw, self.pw, 27015) as rcon:
             resp = rcon.command(msg)
             print(resp)
 
+    async def on_ready(self):
+        logger.info("Connected to discord")
     
 if __name__ == "__main__":
+    print("Starting discord/factorio bridge....")
     fb = FacBot(os.environ['CHANNEL_ID'],
                 os.environ["FACTORIO_DATA_DIR_PATH"],
                 os.environ.get("FACTORIO_HOST", '127.0.0.1'))
