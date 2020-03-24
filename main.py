@@ -17,6 +17,7 @@ logger = logging.getLogger('discord')
 logger.setLevel(logging.DEBUG)
 
 class FacLogHandler(PatternMatchingEventHandler):
+    # Watches a log file for useful events
     def __init__(self, fbot, logfile):
         self.fbot = fbot
         self.log_loc = logfile
@@ -29,6 +30,10 @@ class FacLogHandler(PatternMatchingEventHandler):
         self.observer.start()
 
     def spin_up(self):
+        # When the bridge first starts up, wait for factorio to start and
+        # create the log file, then read to the end so we don't duplicate
+        # any messages
+
         self.logfile = None
         elapsed = 0
         while self.logfile is None:
@@ -44,6 +49,8 @@ class FacLogHandler(PatternMatchingEventHandler):
             pass
 
     def on_modified(self, event):
+        # When a line is written to the log, handle any action needed.
+        # Right now, there's only chat.
         for line in self.logfile:
             m = re.match("^[-0-9: ]+\[([A-Z]+)\] (.+)$", line)
             if m is None:
@@ -76,6 +83,7 @@ class FacLogHandler(PatternMatchingEventHandler):
         asyncio.run_coroutine_threadsafe(coro, self.fbot.loop)
 
 class FacBot(commands.Bot):
+    # Interacts with discord
     def __init__(self, bridge_id, data_dir, host):
         super().__init__(['/', ''])
         self.bridge_id = int(bridge_id)
@@ -95,6 +103,7 @@ class FacBot(commands.Bot):
             # an actual command
             return await self.invoke(ctx)
         elif ctx.channel.id == self.bridge_id:
+            # a chat message
             return await self.send_to_factorio(ctx)
 
     async def send_to_factorio(self, ctx):
@@ -102,13 +111,13 @@ class FacBot(commands.Bot):
         logger.debug("Msg from discord: \"{}\"".format(msg))
         with MCRcon(self.pw, self.pw, 27015) as rcon:
             resp = rcon.command(msg)
-            print(resp)
+            logger.debug("Response from factorio: '%s'", resp)
 
     async def on_ready(self):
         logger.info("Connected to discord")
     
 if __name__ == "__main__":
-    print("Starting discord/factorio bridge....")
+    logger.info("Starting discord/factorio bridge....")
     fb = FacBot(os.environ['CHANNEL_ID'],
                 os.environ["FACTORIO_DATA_DIR_PATH"],
                 os.environ.get("FACTORIO_HOST", '127.0.0.1'))
