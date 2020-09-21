@@ -109,7 +109,7 @@ class FacBot(commands.Bot):
     async def send_to_factorio(self, ctx):
         msg = "{}: {}".format(ctx.author.display_name, ctx.message.content)
         logger.debug("Msg from discord: \"{}\"".format(msg))
-        with MCRcon(self.pw, self.pw, 27015) as rcon:
+        with MCRcon(self.host, self.pw, 27015) as rcon:
             resp = rcon.command(msg)
             logger.debug("Response from factorio: '%s'", resp)
 
