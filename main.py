@@ -48,6 +48,12 @@ class FacLogHandler(PatternMatchingEventHandler):
         for line in self.logfile:
             pass
 
+    def on_created(self, event):
+        # Factorio moves the file aside and creates a new one.
+        # Close the existing file and look for the new one.
+        self.logfile.close()
+        self.spin_up()
+
     def on_modified(self, event):
         # When a line is written to the log, handle any action needed.
         # Right now, there's only chat.
