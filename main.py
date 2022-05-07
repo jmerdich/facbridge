@@ -48,6 +48,12 @@ class FacLogHandler(PatternMatchingEventHandler):
         for line in self.logfile:
             pass
 
+    def on_created(self, event):
+        # Factorio moves the file aside and creates a new one.
+        # Close the existing file and look for the new one.
+        self.logfile.close()
+        self.spin_up()
+
     def on_modified(self, event):
         # When a line is written to the log, handle any action needed.
         # Right now, there's only chat.
@@ -109,7 +115,7 @@ class FacBot(commands.Bot):
     async def send_to_factorio(self, ctx):
         msg = "{}: {}".format(ctx.author.display_name, ctx.message.content)
         logger.debug("Msg from discord: \"{}\"".format(msg))
-        with MCRcon(self.pw, self.pw, 27015) as rcon:
+        with MCRcon(self.host, self.pw, 27015) as rcon:
             resp = rcon.command(msg)
             logger.debug("Response from factorio: '%s'", resp)
 
